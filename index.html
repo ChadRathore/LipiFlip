@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LipiFlip: Script Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for better textarea focus and transitions */
+        textarea:focus {
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+            border-color: #60A5FA;
+        }
+        .converter-card {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="converter-card bg-gray-800/50 border border-gray-700 rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-4xl">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-100">LipiFlip</h1>
+            <p class="text-gray-400 mt-2">Convert between Devanagari, Brahmi, and IAST scripts.</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+            <div class="w-full md:w-5/12">
+                <label for="fromScript" class="block mb-2 text-sm font-medium text-gray-300">From</label>
+                <select id="fromScript" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="devanagari" selected>Devanagari (देवनागरी)</option>
+                    <option value="brahmi">Brahmi (𑀩𑁆𑀭𑀸𑀳𑁆𑀫𑀻)</option>
+                    <option value="iast">IAST (Sanskrit Transliteration)</option>
+                </select>
+            </div>
+            
+            <div class="mt-4 md:mt-0">
+                <button id="swapBtn" title="Swap Scripts" class="p-2.5 bg-gray-700 hover:bg-blue-600 rounded-full transition-all duration-200 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white transform group-hover:rotate-180 transition-transform duration-300"><path d="M8 3L4 7l4 4"/><path d="M4 7h16"/><path d="M16 21l4-4-4-4"/><path d="M20 17H4"/></svg>
+                </button>
+            </div>
+
+            <div class="w-full md:w-5/12">
+                <label for="toScript" class="block mb-2 text-sm font-medium text-gray-300">To</label>
+                <select id="toScript" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="devanagari">Devanagari (देवनागरी)</option>
+                    <option value="brahmi">Brahmi (𑀩𑁆𑀭𑀸𑀳𑁆𑀫𑀻)</option>
+                    <option value="iast" selected>IAST (Sanskrit Transliteration)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Text Areas -->
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <textarea id="inputText" rows="10" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-lg transition-all duration-200 outline-none placeholder-gray-500" placeholder="Enter text here..."></textarea>
+            </div>
+            <div class="relative">
+                <textarea id="outputText" rows="10" readonly class="w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-lg transition-all duration-200 outline-none placeholder-gray-500" placeholder="Conversion will appear here..."></textarea>
+                <button id="copyBtn" title="Copy to Clipboard" class="absolute top-3 right-3 p-2 bg-gray-700 hover:bg-blue-600 rounded-lg transition-colors">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fromScriptSelect = document.getElementById('fromScript');
+        const toScriptSelect = document.getElementById('toScript');
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const swapBtn = document.getElementById('swapBtn');
+        const copyBtn = document.getElementById('copyBtn');
+
+        // --- CONVERSION MAPS ---
+        const devanagariToIASTMap = {
+            'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ṅ',
+            'च': 'c', 'छ': 'ch', 'ज': 'j', 'झ': 'jh', 'ञ': 'ñ',
+            'ट': 'ṭ', 'ठ': 'ṭh', 'ड': 'ḍ', 'ढ': 'ḍh', 'ण': 'ṇ',
+            'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+            'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+            'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v',
+            'श': 'ś', 'ष': 'ṣ', 'स': 's', 'ह': 'h',
+            'अ': 'a', 'आ': 'ā', 'इ': 'i', 'ई': 'ī', 'उ': 'u', 'ऊ': 'ū',
+            'ऋ': 'ṛ', 'ॠ': 'ṝ', 'ऌ': 'ḷ', 'ॡ': 'ḹ',
+            'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+            'ा': 'ā', 'ि': 'i', 'ी': 'ī', 'ु': 'u', 'ू': 'ū',
+            'ृ': 'ṛ', 'ॄ': 'ṝ', 'ॢ': 'ḷ', 'ॣ': 'ḹ',
+            'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', '्': '', 'ं': 'ṃ', 'ः': 'ḥ', 'ऽ': '’',
+            '०': '0', '१': '1', '२': '2', '३': '3', '४': '4', '५': '5', '६': '6', '७': '7', '८': '8', '९': '9',
+            ' ': ' ', '\n': '\n'
+        };
+
+        const devanagariToBrahmiMap = {
+            'अ': '𑀅', 'आ': '𑀆', 'इ': '𑀇', 'ई': '𑀈', 'उ': '𑀉', 'ऊ': '𑀊', 'ऋ': '𑀋', 'ॠ': '𑀌', 'ए': '𑀏', 'ऐ': '𑀐', 'ओ': '𑀑', 'औ': '𑀒',
+            'क': '𑀓', 'ख': '𑀔', 'ग': '𑀕', 'घ': '𑀖', 'ङ': '𑀗', 'च': '𑀘', 'छ': '𑀙', 'ज': '𑀚', 'झ': '𑀛', 'ञ': '𑀜',
+            'ट': '𑀝', 'ठ': '𑀞', 'ड': '𑀟', 'ढ': '𑀠', 'ण': '𑀡', 'त': '𑀢', 'थ': '𑀣', 'द': '𑀤', 'ध': '𑀥', 'न': '𑀦',
+            'प': '𑀧', 'फ': '𑀨', 'ब': '𑀩', 'भ': '𑀪', 'म': '𑀫', 'य': '𑀬', 'र': '𑀭', 'ल': '𑀮', 'व': '𑀯',
+            'श': '𑀰', 'ष': '𑀱', 'स': '𑀲', 'ह': '𑀳',
+            'ा': '𑀸', 'ि': '𑀺', 'ी': '𑀻', 'ु': '𑀼', 'ू': '𑀽', 'ृ': '𑀾', 'ॄ': '𑀿',
+            'े': '𑁂', 'ै': '𑁃', 'ो': '𑁄', 'ौ': '𑁅', '्': '𑁆', 'ं': '𑀁', 'ः': '𑀂',
+            ' ': ' ', '\n': '\n'
+        };
+
+        function reverseMap(map) {
+            return Object.fromEntries(Object.entries(map).map(([key, value]) => [value, key]));
+        }
+
+        const iastToDevanagariMap = reverseMap(devanagariToIASTMap);
+        const brahmiToDevanagariMap = reverseMap(devanagariToBrahmiMap);
+
+
+        // --- CORE CONVERSION LOGIC ---
+        function convert(text, map) {
+             let result = '';
+             for (const char of text) {
+                 result += map[char] || '?';
+             }
+             return result;
+        }
+        
+        function devanagariToIAST(text) {
+            const consonants = 'कखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह';
+            const vowelSigns = 'ािीुूृॄॢॣेैोौ्';
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
+                if (devanagariToIASTMap[char] !== undefined) {
+                    if (consonants.includes(char)) {
+                        if (!nextChar || !vowelSigns.includes(nextChar)) {
+                            result += devanagariToIASTMap[char] + 'a';
+                        } else {
+                            result += devanagariToIASTMap[char];
+                        }
+                    } else {
+                        result += devanagariToIASTMap[char];
+                    }
+                } else {
+                    result += char;
+                }
+            }
+            return result.replace(/a(?=[āīūṛṝḷḹeioau])/g, '');
+        }
+        
+        function performConversion() {
+            const from = fromScriptSelect.value;
+            const to = toScriptSelect.value;
+            const text = inputText.value;
+            let result = '';
+
+            if (from === to) {
+                result = text;
+            } 
+            
+            let devanagariText = text;
+            if (from !== 'devanagari') {
+                result = `Conversion from ${from} is not fully supported yet.`;
+            } else {
+                 if (to === 'devanagari') {
+                     result = devanagariText;
+                 } else if (to === 'iast') {
+                     result = devanagariToIAST(devanagariText);
+                 } else if (to === 'brahmi') {
+                     result = convert(devanagariText, devanagariToBrahmiMap);
+                 } else {
+                     result = "Conversion path not implemented yet.";
+                 }
+            }
+
+            outputText.value = result;
+        }
+
+        // --- EVENT LISTENERS ---
+
+        inputText.addEventListener('input', performConversion);
+        fromScriptSelect.addEventListener('change', performConversion);
+        toScriptSelect.addEventListener('change', performConversion);
+
+        swapBtn.addEventListener('click', () => {
+            const fromVal = fromScriptSelect.value;
+            const toVal = toScriptSelect.value;
+
+            // Only allow swapping if the 'to' script is devanagari
+            if (toVal === 'devanagari') {
+                 fromScriptSelect.value = toVal;
+                 toScriptSelect.value = fromVal;
+                 inputText.value = outputText.value;
+                 performConversion();
+            } else {
+                // Shake the button to indicate not possible
+                swapBtn.classList.add('animate-shake');
+                setTimeout(() => swapBtn.classList.remove('animate-shake'), 500);
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            outputText.select();
+            document.execCommand('copy');
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+            }, 1500);
+        });
+        
+        // Add a simple shake animation for the swap button
+        const style = document.createElement('style');
+        style.innerHTML = `
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0) rotate(0); }
+            20%, 80% { transform: translate3d(2px, 0, 0) rotate(0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0) rotate(0); }
+            40%, 60% { transform: translate3d(4px, 0, 0) rotate(0); }
+        }
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        `;
+        document.head.appendChild(style);
+
+        performConversion();
+
+    </script>
+</body>
+</html>
+
+
+
