@@ -22,11 +22,3 @@ This project was created as a first step into web development and to provide a u
 * HTML5  
 * Tailwind CSS  
 * Vanilla JavaScript
-
-## **How to Add a Screenshot**
-
-1. Take a screenshot of your running LipiFlip application.  
-2. In your GitHub repository, click on **Add file \> Upload files**.  
-3. Upload the screenshot image.  
-4. Click on the uploaded image file in your repository to get its URL.  
-5. Replace the https://placehold.co/... link in this README with the URL to your screenshot.
